@@ -14,46 +14,43 @@
  *
  */
 definition(
-    name: "HTD GW-SL1",
-    namespace: "synfinatic",
-    author: "Aaron Turner",
-    description: "HTD (W)GW-SL1 Smart Gateway for the MC-66/MCA-66",
-    category: "My Apps",
-    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
-    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+        name: "HTD GW-SL1",
+        namespace: "synfinatic",
+        author: "Aaron Turner",
+        description: "HTD (W)GW-SL1 Smart Gateway for the MC-66/MCA-66",
+        category: "My Apps",
+        iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+        iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
+        iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
 
 preferences {
     page(name: "config", title: "GW-SL1 Config", uninstall: true, nextPage: "zones") {
-    section() {
-        input "ipAddress", "text", multiple: false, required: true, title: "IP Address:", defaultValue: "172.16.1.133"
-        input "tcpPort", "integer", multiple: false, required: true, title: "TCP Port:", defaultValue: 10006
-        input "HTDtype", "enum", multiple: false, required: true, title: "HTD Controller:", options: ['MC-66', 'MCA-66']
-        input "theHub", "hub", multiple: false, required: true, title: "Pair with SmartThings Hub:"
-        
-    }
+        section() {
+            input "ipAddress", "text", multiple: false, required: true, title: "IP Address:", defaultValue: "172.16.1.133"
+            input "tcpPort", "integer", multiple: false, required: true, title: "TCP Port:", defaultValue: 10006
+            input "HTDtype", "enum", multiple: false, required: true, title: "HTD Controller:", options: ['MC-66', 'MCA-66']
+            input "theHub", "hub", multiple: false, required: true, title: "Pair with SmartThings Hub:"
+        }
     }
     page(name: "zones", title: "Zone Names", nextPage: "sources") {
-    section() {
-    	input "zone1", "text", multiple: false, required: true, title: "Zone 1:", defaultValue: "Zone 1"
-    	input "zone2", "text", multiple: false, required: true, title: "Zone 2:", defaultValue: "Zone 2"
-    	input "zone3", "text", multiple: false, required: true, title: "Zone 3:", defaultValue: "Zone 3"
-    	input "zone4", "text", multiple: false, required: true, title: "Zone 4:", defaultValue: "Zone 4"
-    	input "zone5", "text", multiple: false, required: true, title: "Zone 5:", defaultValue: "Zone 5"
-    	input "zone6", "text", multiple: false, required: true, title: "Zone 6:", defaultValue: "Zone 6"
-        
-	}
+        section() {
+            input "zone1", "text", multiple: false, required: false, title: "Zone 1:", defaultValue: "Zone 1"
+            input "zone2", "text", multiple: false, required: false, title: "Zone 2:", defaultValue: "Zone 2"
+            input "zone3", "text", multiple: false, required: false, title: "Zone 3:", defaultValue: "Zone 3"
+            input "zone4", "text", multiple: false, required: false, title: "Zone 4:", defaultValue: "Zone 4"
+            input "zone5", "text", multiple: false, required: false, title: "Zone 5:", defaultValue: "Zone 5"
+            input "zone6", "text", multiple: false, required: false, title: "Zone 6:", defaultValue: "Zone 6"
+        }
     }
-    page(name: "sources", title: "Source Names", install: true) {
-    section() {
-    	input "source1", "text", multiple: false, required: true, title: "Source 1:", defaultValue: "Source 1"
-    	input "source2", "text", multiple: false, required: true, title: "Source 2:", defaultValue: "Source 2"
-    	input "source3", "text", multiple: false, required: true, title: "Source 3:", defaultValue: "Source 3"
-    	input "source4", "text", multiple: false, required: true, title: "Source 4:", defaultValue: "Source 4"
-    	input "source5", "text", multiple: false, required: true, title: "Source 5:", defaultValue: "Source 5"
-    	input "source6", "text", multiple: false, required: true, title: "Source 6:", defaultValue: "Source 6"
-        
-	}
+    page(name: "sources", title: "Source Names", install: false) {
+        section() {
+            input "source1", "text", multiple: false, required: false, title: "Source 1:", defaultValue: "Source 1"
+            input "source2", "text", multiple: false, required: false, title: "Source 2:", defaultValue: "Source 2"
+            input "source3", "text", multiple: false, required: false, title: "Source 3:", defaultValue: "Source 3"
+            input "source4", "text", multiple: false, required: false, title: "Source 4:", defaultValue: "Source 4"
+            input "source5", "text", multiple: false, required: false, title: "Source 5:", defaultValue: "Source 5"
+            input "source6", "text", multiple: false, required: false, title: "Source 6:", defaultValue: "Source 6"
+        }
     }
 }
 
@@ -71,25 +68,29 @@ def updated() {
 def initialize() {
     log.debug "Trying to connect to ${ipAddress}:${tcpPort}"
     def porthex = convertPortToHex(tcpPort)
-	def iphex = convertIPtoHex(ipAddress)
+    def iphex = convertIPtoHex(ipAddress)
     def dni_base = "${iphex}:${porthex}"
     if (HTDtype == 'MC-66' || HTDtype == 'MCA-66') {
-    	def dni = "${dni_base}:${i}"
-    	for (int i = 1; i < 7; i ++) {
-		    def dev = addChildDevice("synfinatic", "HTD Zone", dni, theHub.id,
-        		[label: "HTD MC-66 Zone ${i}"])
-	        log.info "created ${dev.displayName} with ${dni}"
-		}
+        def dni = "${dni_base}:${i}"
+        for (int i = 1; i < 7; i ++) {
+            def dev = addChildDevice("synfinatic", "HTD Zone", dni, theHub.id,
+                    [label: "HTD MC-66 Zone ${i}"])
+            log.info "created ${dev.displayName} with ${dni}"
+        }
     }
+    // nothing is muted by default
+    state.zone_mute = [1: false, 2: false, 3: false, 4: false, 5: false, 6: false]
+    // all zones default to source = 1.  Hopefully the user enabled it :)
+    state.zone_source = [1: 1, 2: 2, 3: 1, 4: 1, 5: 1, 6: 1]
     // TODO add support for Lynx 6/12
 }
 
 def unsubscribe() {
-	devices = getChildDevices()
+    devices = getChildDevices()
     for (device in devices) {
-    	log.debug "unsubscribe(): found child device: ${device.displayName} = ${device.id}"
-	    // TODO: should we delete them??
-    	// deleteChildDevice(device.id)
+        log.debug "unsubscribe(): found child device: ${device.displayName} = ${device.id}"
+        // TODO: should we delete them??
+        // deleteChildDevice(device.id)
     }
 }
 
@@ -105,7 +106,6 @@ private String convertIPtoHex(ipAddress) {
     String hex = ipAddress.tokenize( '.' ).collect {  String.format( '%02x', it.toInteger() ) }.join()
     log.debug "IP address ${ipAddress} is converted to ${hex}"
     return hex
-
 }
 
 private String convertPortToHex(port) {
@@ -114,171 +114,232 @@ private String convertPortToHex(port) {
     return hexport
 }
 
-// generates the actual 6 byte command as a string
-private String command(child_id, cmd, id) {
-	def command_base = 0x0200
-	return sprintf("%04x%02x%04x%02x", command_base, child_id, cmd, id)
-}
 
-// input channel command
-private String _set_input_channel(child_id, channel) {
-	def cmd = 0x0403 + child_id - 11
-	def id = 0x0A + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _volume_up(child_id) {
-	def cmd = 0x0409 + child_id - 1
-    def id = 0x10 + child_id - 1
-    return command(child_id, cmd, id)    
-}
-
-private String _volume_down(child_id) {
-	def cmd = 0x040A
-    def id = 0x11 + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _power_on(child_id) {
-	def cmd = 0x0420
-    def id = 0x27 + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _power_off(child_id) {
-	def cmd = 0x0421
-    def id = 0x28 + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _toggle_mute(child_id) {
-	def cmd = 0x0422
-    def id = 0x29 + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _bass_up(child_id) {
-	def cmd = 0x0426
-    def id = 0x2d + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _bass_down(child_id) {
-	def cmd = 0x0427
-    def id = 0x2e + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _trebel_up(child_id) {
-	def cmd = 0x0428
-    def id = 0x2f + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _trebel_down(child_id) {
-	def cmd = 0x0429
-    def id = 0x30 + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _balance_right(child_id) {
-	def cmd = 0x042a
-    def id = 0x31 + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _balance_left(child_id) {
-	def cmd = 0x042b
-    def id = 0x32 + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private String _query_state(child_id) {
-	def cmd = 0x0600
-    def id = 0x09 + child_id - 1
-    return command(child_id, cmd, id)
-}
-
-private int get_child_id(child) {
-	def values = child.id.split(':')
+// get the zone_id for a child device
+private int get_zone_id(child) {
+    def values = child.id.split(':')
     return values[2]
 }
 
-private boolean send_command(child, command, read_reply=0) {
-	def values = child.id.split(':')
+/*
+ * sends a command.to the gateway
+ * if read_reply > 0, then read that many bytes from the
+ * controller and return them as a byte[]
+ */
+private byte[] send_command(child, command, read_reply=0) {
+    def values = child.id.split(':')
     def ipAddr = convertHexToIP(values[0])
     def portAddr = convertHexToInt(values[1])
-	s = new Socket(ipAddr, portAddr)
-    def reply 
-    s.withStreams { input, output ->
-	  output << command
-	  log.debug "sent command to ${child.id}"
-      if (read_reply > 0) {
-      	reply = input.read(read_reply)
-      }
-	}
+    s = new Socket(ipAddr, portAddr)
+    infh = socket.getInputStream()
+    outfh = socket.getOutputStream()
+    outfh.write(command)
+    def reply = new byte[read_reply]
+    for (int i = 0; i < read_reply; i ++) {
+        reply[i] = infh.read()
+    }
+    infh.close()
+    outfh.close()
     s.close()
     return reply
 }
 
-
-// handle commands
+/*
+ * handle commands from the device
+ */
 def setMute(child, value) {
-	log.debug "Executing 'setMute'"
-	send_command(child, _toggle_mute(get_child_id(child.device.id)))
-	// TODO: handle 'setMute' command
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing 'setMute' for zone ${zone_id}"
+    if (value != state.zone_mute.get(zone_id)) {
+        send_command(child, _toggle_mute(zone_id))
+    }
 }
 
 def mute(child) {
-	log.debug "Executing 'mute'"
-	send_command(child, _toggle_mute(get_child_id(child.device.id)))
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing 'mute' for zone ${zone_id}"
+    if (! state.zone_mute.get(zone_id)) {
+        send_command(child, _toggle_mute(zone_id))
+    }
 }
 
 def unmute(child) {
-	log.debug "Executing 'unmute'"
-	send_command(child, _toggle_mute(get_child_id(child.device.id)))
-	// TODO: handle 'unmute' command
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing 'unmute' for zone ${zone_id}"
+    if (state.zone_mute.get(zone_id)) {
+        send_command(child, _toggle_mute(zone_id))
+    }
 }
 
 def setVolume(child, value) {
-	log.debug "Executing 'setVolume'"
-	// TODO: handle 'setVolume' command
+    zone_id = get_zone_id(child.device.id)
+    log.debug "setVolume' does nothing at this time..."
+    // we need some way of figuring out what the current volume is (0-60) and then
+    // calling volumeUp/Down as appropriate to get to the new value. Maybe is returned
+    // by queryZoneState?
 }
 
 def volumeUp(child) {
-	log.debug "Executing 'volumeUp'"
-	send_command(child, _volume_up(get_child_id(child.device.id)))
-	// TODO: handle 'volumeUp' command
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing 'volumeUp' for zone ${zone_id}"
+    send_command(child, _volume_up(zone_id))
 }
 
 def volumeDown(child) {
-	log.debug "Executing 'volumeDown'"
- 	send_command(child, _volume_down(get_child_id(child.device.id)))
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing 'volumeDown' for zone ${zone_id}"
+    send_command(child, _volume_down(zone_id))
 }
 
-def setInputSource(child, source) {
-	log.debug "Executing 'setInputSource'"
-	send_command(child, _toggle_mute(get_child_id(child.device.id)))
+def setInputSource(child, source_id) {
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing 'setInputSource' for zone ${zone_id} => ${source_id}"
+    send_command(child, _set_input_channel(zone_id, source_id))
 }
 
 def on(child) {
-	log.debug "Executing 'on'"
-	// TODO: handle 'on' command
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing 'on' for zone ${zone_id}"
+    send_command(child, _power_on(zone_id))
 }
 
 def off(child) {
-	log.debug "Executing 'off'"
-	// TODO: handle 'off' command
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing 'off' for zone ${zone_id}"
+    send_command(child, _power_off(zone_id))
 }
 
 def setTrebel(child, action) {
-
+    zone_id = get_zone_id(child.device.id)
+    if (action == 'up') {
+        log.debug "Executing trebel up for zone ${zone_id}"
+        send_command(child, _trebel_up(zone_id))
+    } else {
+        log.debug "Executing trebel down for zone ${zone_id}"
+        send_command(child, _trebel_down(zone_id))
+    }
 }
 
 def setBass(child, action) {
-
+    zone_id = get_zone_id(child.device.id)
+    if (action == 'up') {
+        log.debug "Executing bass up for zone ${zone_id}"
+        send_command(child, _bass_up(zone_id))
+    } else {
+        log.debug "Executing bass down for zone ${zone_id}"
+        send_command(child, _bass_down(zone_id))
+    }
 }
 
 def setBalance(child, action) {
+    zone_id = get_zone_id(child.device.id)
+    if (action == 'left') {
+        log.debug "Executing balance left for zone ${zone_id}"
+        send_command(child, _balance_left(zone_id))
+    } else {
+        log.debug "Executing balance right for zone ${zone_id}"
+        send_command(child, _balance_rigth(zone_id))
+    }
+}
 
+def partyMode(child) {
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing party mode for zoe ${zone_id}"
+    send_command(child, _party_mode(zone_id))
+}
+
+def queryZoneState(child) {
+    zone_id = get_zone_id(child.device.id)
+    log.debug "Executing query zone state for zoe ${zone_id}"
+    // the returns some bytes... what should we do with them?
+    ret = send_command(child, _query_zone_state(zone_id))
+}
+
+/*
+ * Helper methods to generate the actual 6 byte message sent on the wire
+ */
+
+// generates the actual 6 byte command as a string.  x is _almost_ always 0x04
+private byte[] command(zone_id, x, y) {
+    def cmd = [0x02, 0x0, zone_id, x, y, 0] as byte[]
+    // last byte is a "checksum" which is just all the bytes added up
+    cmd[5] = cmd.sum()
+    return cmd
+}
+
+// input channel source (channel)
+private byte[] _set_input_channel(zone_id, source_id) {
+    def cmd = 0x03 + source_id - 1
+    state.zone_source.put(zone_id, source_id)
+    return command(zone_id, 0x04, cmd)
+}
+
+private byte[] _volume_up(zone_id) {
+    return command(zone_id, 0x04, 0x09)
+}
+
+private byte[] _volume_down(zone_id) {
+    return command(zone_id, 0x04, 0x10)
+}
+
+private byte[] _all_power_on() {
+    return command(0x01, 0x04, 0x38)
+}
+
+private byte[] _all_power_off() {
+    return command(0x01, 0x04, 0x39)
+}
+
+private byte[] _power_on(zone_id) {
+    return command(zone_id, 0x04, 0x20)
+}
+
+private byte[] _power_off(zone_id) {
+    return command(zone_id, 0x04, 0x21)
+}
+
+private byte[] _toggle_mute(zone_id) {
+    state.zone_mute.put(zone_id, ! state.zone_mute.get(zone_id))
+    return command(zone_id, 0x04, 0x22)
+}
+
+private byte[] _bass_up(zone_id) {
+    return command(zone_id, 0x04, 0x26)
+}
+
+private byte[] _bass_down(zone_id) {
+    return command(zone_id, 0x04, 0x27)
+}
+
+private byte[] _trebel_up(zone_id) {
+    return command(zone_id, 0x04, 0x28)
+}
+
+private byte[] _trebel_down(zone_id) {
+    return command(zone_id, 0x04, 0x29)
+}
+
+private byte[] _balance_right(zone_id) {
+    return command(zone_id, 0x04, 0x31)
+}
+
+private byte[] _balance_left(zone_id) {
+    return command(zone_id, 0x04, 0x32)
+}
+
+/*
+ * I assume I should read something when this is sent?
+ * trying to get a secret decoder ring for the reply from HTD
+ */
+private byte[] _query_zone_state(zone_id) {
+    return command(zone_id, 0x06, 0x00)
+}
+
+/*
+ * Party mode!  Retrieve the current source for our given
+ * zone
+ */
+private byte[] _party_mode(zone_id) {
+    def source_id = state.zone_source.get(zone_id)
+    return command(zone_id, 0x04, 0x39 + zone_id + source_id)
 }
