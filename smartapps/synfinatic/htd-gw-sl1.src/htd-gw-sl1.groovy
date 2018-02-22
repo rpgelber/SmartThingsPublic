@@ -24,11 +24,36 @@ definition(
     iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
 
 preferences {
-    section("GW-SL1 Config:") {
-        input "ipAddress", "text", multiple: false, required: true, title: "IP Address:"
-        input "tcpPort", "integer", multiple: false, required: false, title: "TCP Port:", defaultValue: 10006
+    page(name: "config", title: "GW-SL1 Config", uninstall: true, nextPage: "zones") {
+    section() {
+        input "ipAddress", "text", multiple: false, required: true, title: "IP Address:", defaultValue: "172.16.1.133"
+        input "tcpPort", "integer", multiple: false, required: true, title: "TCP Port:", defaultValue: 10006
         input "HTDtype", "enum", multiple: false, required: true, title: "HTD Controller:", options: ['MC-66', 'MCA-66']
         input "theHub", "hub", multiple: false, required: true, title: "Pair with SmartThings Hub:"
+        
+    }
+    }
+    page(name: "zones", title: "Zone Names", nextPage: "sources") {
+    section() {
+    	input "zone1", "text", multiple: false, required: true, title: "Zone 1:", defaultValue: "Zone 1"
+    	input "zone2", "text", multiple: false, required: true, title: "Zone 2:", defaultValue: "Zone 2"
+    	input "zone3", "text", multiple: false, required: true, title: "Zone 3:", defaultValue: "Zone 3"
+    	input "zone4", "text", multiple: false, required: true, title: "Zone 4:", defaultValue: "Zone 4"
+    	input "zone5", "text", multiple: false, required: true, title: "Zone 5:", defaultValue: "Zone 5"
+    	input "zone6", "text", multiple: false, required: true, title: "Zone 6:", defaultValue: "Zone 6"
+        
+	}
+    }
+    page(name: "sources", title: "Source Names", install: true) {
+    section() {
+    	input "source1", "text", multiple: false, required: true, title: "Source 1:", defaultValue: "Source 1"
+    	input "source2", "text", multiple: false, required: true, title: "Source 2:", defaultValue: "Source 2"
+    	input "source3", "text", multiple: false, required: true, title: "Source 3:", defaultValue: "Source 3"
+    	input "source4", "text", multiple: false, required: true, title: "Source 4:", defaultValue: "Source 4"
+    	input "source5", "text", multiple: false, required: true, title: "Source 5:", defaultValue: "Source 5"
+    	input "source6", "text", multiple: false, required: true, title: "Source 6:", defaultValue: "Source 6"
+        
+	}
     }
 }
 
@@ -96,14 +121,14 @@ private String command(child_id, cmd, id) {
 }
 
 // input channel command
-private String _set_input_channel(child_id) {
-	def cmd = 0x0403
+private String _set_input_channel(child_id, channel) {
+	def cmd = 0x0403 + child_id - 11
 	def id = 0x0A + child_id - 1
     return command(child_id, cmd, id)
 }
 
 private String _volume_up(child_id) {
-	def cmd = 0x0409
+	def cmd = 0x0409 + child_id - 1
     def id = 0x10 + child_id - 1
     return command(child_id, cmd, id)    
 }
@@ -174,32 +199,44 @@ private String _query_state(child_id) {
     return command(child_id, cmd, id)
 }
 
-private boolean send_command(child, command) {
+private int get_child_id(child) {
+	def values = child.id.split(':')
+    return values[2]
+}
+
+private boolean send_command(child, command, read_reply=0) {
 	def values = child.id.split(':')
     def ipAddr = convertHexToIP(values[0])
     def portAddr = convertHexToInt(values[1])
 	s = new Socket(ipAddr, portAddr)
+    def reply 
     s.withStreams { input, output ->
 	  output << command
 	  log.debug "sent command to ${child.id}"
+      if (read_reply > 0) {
+      	reply = input.read(read_reply)
+      }
 	}
     s.close()
+    return reply
 }
 
 
 // handle commands
 def setMute(child, value) {
 	log.debug "Executing 'setMute'"
+	send_command(child, _toggle_mute(get_child_id(child.device.id)))
 	// TODO: handle 'setMute' command
 }
 
 def mute(child) {
 	log.debug "Executing 'mute'"
-	// TODO: handle 'mute' command
+	send_command(child, _toggle_mute(get_child_id(child.device.id)))
 }
 
 def unmute(child) {
 	log.debug "Executing 'unmute'"
+	send_command(child, _toggle_mute(get_child_id(child.device.id)))
 	// TODO: handle 'unmute' command
 }
 
@@ -210,17 +247,18 @@ def setVolume(child, value) {
 
 def volumeUp(child) {
 	log.debug "Executing 'volumeUp'"
+	send_command(child, _volume_up(get_child_id(child.device.id)))
 	// TODO: handle 'volumeUp' command
 }
 
 def volumeDown(child) {
 	log.debug "Executing 'volumeDown'"
-	// TODO: handle 'volumeDown' command
+ 	send_command(child, _volume_down(get_child_id(child.device.id)))
 }
 
 def setInputSource(child, source) {
 	log.debug "Executing 'setInputSource'"
-	// TODO: handle 'setInputSource' command
+	send_command(child, _toggle_mute(get_child_id(child.device.id)))
 }
 
 def on(child) {
