@@ -24,48 +24,77 @@ definition(
         iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
 
 preferences {
-    page(name: "config", title: "(W)GW-SL1 Config", uninstall: true, nextPage: "active") {
+    page(name: "config", title: "HTD (W)GW-SL1 Config", uninstall: true, nextPage: "active_page") {
         section() {
-            input "ipAddress", "text", multiple: false, required: true, title: "IP Address:", defaultValue: "172.16.1.133"
-            input "tcpPort", "integer", multiple: false, required: true, title: "TCP Port:", defaultValue: 10006
-            input "HTDtype", "enum", multiple: false, required: true, title: "HTD Controller:", options: ['MC-66', 'MCA-66']
-            input "theHub", "hub", multiple: false, required: true, title: "Pair with SmartThings Hub:"
+            input("ipAddress", "text", multiple: false, required: true, title: "IP Address:", defaultValue: "172.16.1.133")
+            input("tcpPort", "integer", multiple: false, required: true, title: "TCP Port:", defaultValue: 10006)
+            input("HTDtype", "enum", multiple: false, required: true, title: "HTD Controller:", options: ['MC-66', 'MCA-66'])
+            input("theHub", "hub", multiple: false, required: true, title: "Pair with SmartThings Hub:")
         }
     }
-    page(name: "active", title: "Select Active Zones and Sources", nextPage: "naming") {
-        def zone_count = 6
-        def source_count = 6
+    page(name: "active_page", title: "Select Active Zones and Sources", nextPage: "naming_page")
+    page(name: "naming_page", title: "Name Zones and Sources", install: true)
+}
+
+def active_page() {
+	dynamicPage(name: "active_page") {
         section("Which zones are available?") {
-            for (int i = 1; i <= zone_count; i++ ) {
-                input "zone${i}_active", "bool", title: "Zone ${i} Active:", defaultValue: true
-            }
+            input("active_zones", "enum", multiple: true, title: "Active Zones", options: controllerZones(HTDtype))
         }
         section("Which input sources are available?") {
-            for (int i = 1; i <= zone_count; i++ ) {
-                input "source{i}_active", "bool", title: "Source ${i} Active:", defaultValue: true
-            }
+            input("active_sources", "enum", multiple: true, title: "Active Sources:", options: controllerSources(HTDtype))
         }
     }
-    page(name: "naming", title: "Name Zones and Sources", install: true) {
-        def zone_count = 6
-        def source_count = 6
+}
+
+def naming_page() {
+    dynamicPage(name: "naming_page") {
         section("Name your zones:") {
-            for (int i = 1; i <= zone_count; i++) {
-                def zone_active_name = this."zone${i}_active"
-                if (zone_active_name) {
-                    input "zone${i}", "text", multiple: false, required: false, title: "Zone ${i}:", defaultValue: "Zone ${i}"
+        	def zones = active_zones.collect{ it.toInteger() }
+        	log.debug("My active zones: ${zones.join(',')}")
+            for (int i = 1; i <= 6; i++) {
+            	if (i in zones) {
+                    log.debug("creating active zone: ${i}")
+                    input("zone${i}", "text", multiple: false, required: true, title: "Zone ${i}:", defaultValue: "Zone ${i}")
+                } else {
+                	log.debug("Skipping zone ${i}")
                 }
             }
         }
         section("Name your input sources:") {
-            for (int i = 1; i <= source_count; i++) {
-                def source_active_name = this."source${i}_active"
-                if (source_active_name) {
-                    input "source${i}", "text", multiple: false, required: false, title: "Source ${i}:", defaultValue: "Source ${i}"
+        	def sources = active_sources.collect{ it.toInteger() }
+        	log.debug("My active sources: ${sources.join(',')}")
+            for (int i = 1; i <= 6; i++) {
+            	if (i in sources) {
+                    input "source${i}", "text", multiple: false, required: true, title: "Source ${i}:", defaultValue: "Source ${i}"
                 }
             }
         }
     }
+}
+
+// How many sources does our controller support?
+private controllerSources(controller) {
+	log.debug("finding sources for controller type: ${controller}")
+	switch(controller) {
+    	case "MC-66":
+        	return ["1", "2", "3", "4", "5", "6"]
+        case "MCA-66":
+        	return ["1", "2", "3", "4", "5", "6"]
+    }
+    return []
+}
+
+// How many zones does our controller support?
+private controllerZones(controller) {
+	log.debug("finding zones for controller type: ${controller}")
+	switch(controller) {
+    	case "MC-66":
+        	return ["1", "2", "3", "4", "5", "6"]
+        case "MCA-66":
+        	return ["1", "2", "3", "4", "5", "6"]
+    }
+    return []
 }
 
 def installed() {
