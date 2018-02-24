@@ -28,6 +28,7 @@ preferences {
         section() {
             input("ipAddress", "text", multiple: false, required: true, title: "IP Address:", defaultValue: "172.16.1.133")
             input("tcpPort", "integer", multiple: false, required: true, title: "TCP Port:", defaultValue: 10006)
+            // Only MC-66 and MCA-66 are supported for now
             input("HTDtype", "enum", multiple: false, required: true, title: "HTD Controller:", options: ['MC-66', 'MCA-66'])
             input("theHub", "hub", multiple: false, required: true, title: "Pair with SmartThings Hub:")
         }
@@ -50,51 +51,77 @@ def active_page() {
 def naming_page() {
     dynamicPage(name: "naming_page") {
         section("Name your zones:") {
-        	def zones = active_zones.collect{ it.toInteger() }
+        	def zones = convertStringList(active_zones)
         	log.debug("My active zones: ${zones.join(',')}")
-            for (int i = 1; i <= 6; i++) {
+            for (int i = 1; i <= controllerZones(HTDtype); i++) {
             	if (i in zones) {
                     log.debug("creating active zone: ${i}")
-                    input("zone${i}", "text", multiple: false, required: true, title: "Zone ${i}:", defaultValue: "Zone ${i}")
+                    input("zone_name.${i}", "text", multiple: false, required: true, title: "Zone ${i}:", defaultValue: "Zone ${i}")
                 } else {
                 	log.debug("Skipping zone ${i}")
                 }
             }
         }
         section("Name your input sources:") {
-        	def sources = active_sources.collect{ it.toInteger() }
+        	def sources = convertStringList(active_sources)
         	log.debug("My active sources: ${sources.join(',')}")
-            for (int i = 1; i <= 6; i++) {
+            for (int i = 1; i <= controllerSources(HTDtype); i++) {
             	if (i in sources) {
-                    input "source${i}", "text", multiple: false, required: true, title: "Source ${i}:", defaultValue: "Source ${i}"
+                    input "source_name.${i}", "text", multiple: false, required: true, title: "Source ${i}:", defaultValue: "Source ${i}"
                 }
             }
         }
     }
 }
 
+// Takes a list of Strings, and converts the list to Integers
+private convertStringList(list) {
+	return list.collect { it.toInteger() }
+}
+
+private int controllerZones(controller) {
+	switch(controller) {
+   		case ["MC-66", "MCA-66", "Lync6"]:
+        	return 6
+        case "Lync12":
+        	return 12
+        default:
+        	return 0
+    }
+}
+
+private int controllerSources(controller) {
+	switch(controller) {
+   		case ["MC-66", "MCA-66"]:
+        	return 6
+        case "Lync6":
+        	return 12
+        case "Lync12":
+        	return 18
+        default:
+        	return 0
+    }
+
+}
+
 // How many sources does our controller support?
 private controllerSources(controller) {
-	log.debug("finding sources for controller type: ${controller}")
-	switch(controller) {
-    	case "MC-66":
-        	return ["1", "2", "3", "4", "5", "6"]
-        case "MCA-66":
-        	return ["1", "2", "3", "4", "5", "6"]
+    def ret = []
+    def list = 1..controllerSources(controller) 
+    list.each { n ->
+   		ret.add(n)
     }
-    return []
+    return ret
 }
 
 // How many zones does our controller support?
 private controllerZones(controller) {
-	log.debug("finding zones for controller type: ${controller}")
-	switch(controller) {
-    	case "MC-66":
-        	return ["1", "2", "3", "4", "5", "6"]
-        case "MCA-66":
-        	return ["1", "2", "3", "4", "5", "6"]
+    def ret = []
+    def list = 1..controllerZones(controller) 
+    list.each { n ->
+   		ret.add(n)
     }
-    return []
+    return ret
 }
 
 def installed() {
@@ -109,23 +136,57 @@ def updated() {
 }
 
 def initialize() {
-    log.debug "Trying to connect to ${ipAddress}:${tcpPort}"
+    // nothing is muted by default
+    state.zone_mute = [:]
+    for (int i = 0; i <= controllerZones(HTDtype); i++) {
+    	state.zone_mute[i] = false
+    }
+    // all zones default to source = 1.  Hopefully the user enabled it :)
+    state.zone_source = [:]
+   	for (int i = 0; i <= controllerSources(HTDtype); i++) {
+    	state.zone_source[i] = 1
+    }
+    // remember our active available zones & sources
+    state.available_zones = convertStringList(active_zones)
+    state.available_sources = convertStringList(active_sources)
+   	state.zone_names = []
+    state.source_names = []
+    state.htd_controller = HTDtype
+    
     def porthex = convertPortToHex(tcpPort)
     def iphex = convertIPtoHex(ipAddress)
     def dni_base = "${iphex}:${porthex}"
-    if (HTDtype == 'MC-66' || HTDtype == 'MCA-66') {
-        def dni = "${dni_base}:${i}"
-        for (int i = 1; i < 7; i ++) {
-            def dev = addChildDevice("synfinatic", "HTD Zone", dni, theHub.id,
-                    [label: "HTD MC-66 Zone ${i}"])
-            log.info "created ${dev.displayName} with ${dni}"
+   
+   	// remember the zone & source names
+    for (entry in settings) {
+    	log.debug("setting entry: ${entry.getKey()} = ${entry.getValue()}")
+    	if (entry.getKey().startsWith("zone_name.")) {
+       		def kvpair = entry.getKey().split(/\./)
+            log.debug("${HTDtype} zone ${kvpair[1]}: ${entry.getValue()}") 
+            state.zone_names.putAt(kvpair[1].toInteger(), entry.getValue())
+        } else if (entry.getKey().startsWith("source_name.")) {
+       		def kvpair = entry.getKey().split(/\./)
+            log.debug("${HTDtype} source ${kvpair[1]}: ${entry.getValue()}") 
+            state.source_names.putAt(kvpair[1].toInteger(), entry.getValue())
         }
     }
-    // nothing is muted by default
-    state.zone_mute = [1: false, 2: false, 3: false, 4: false, 5: false, 6: false]
-    // all zones default to source = 1.  Hopefully the user enabled it :)
-    state.zone_source = [1: 1, 2: 2, 3: 1, 4: 1, 5: 1, 6: 1]
-    // TODO add support for Lynx 6/12
+    
+    // create the zones
+    switch (HTDtype) {
+    	case ['MC-66', 'MCA-66']:
+            for (int i = 1; i <= 6; i ++) {
+                if (i in state.available_zones) {
+                    def dni = "${dni_base}:${i}"
+                    def dev = addChildDevice("synfinatic", "HTD MC-66 Zone", dni, theHub.id,
+                            [label: "${HTDtype} ${state.zone_names[i]}", zone_id: i])
+                    log.info "created ${dev.displayName} with ${dni}"
+                }
+            }
+            break
+        default:
+        	// Lync isn't supported yet
+            log.error("Unable to add any child device for ${HTDtype}") 
+    }
 }
 
 def unsubscribe() {
